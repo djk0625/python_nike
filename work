@@ -1,0 +1,44 @@
+import requests
+from bs4 import BeautifulSoup
+import sqlite3
+
+# 웹 페이지 가져오기
+url = 'https://www.nike.com/kr/launch'
+response = requests.get(url)
+html = response.text
+
+# BeautifulSoup를 사용하여 HTML 파싱
+soup = BeautifulSoup(html, 'html.parser')
+
+# SQLite 데이터베이스 연결
+db_connection = sqlite3.connect('nike_products.db')  # 데이터베이스 파일명 지정
+cursor = db_connection.cursor()
+
+# 테이블 생성 쿼리 실행
+create_table_query = '''
+CREATE TABLE IF NOT EXISTS nike_products (
+    id INTEGER PRIMARY KEY,
+    product_name TEXT,
+    product_image IMAGE,
+    product_idx TEXT,
+    product_price INTEGER,
+    product_date DATE
+);
+'''
+cursor.execute(create_table_query)
+
+# 원하는 데이터 추출 및 데이터베이스에 저장
+products = soup.find_all('div', class_='card-link')
+for product in products:
+    product_name = product.find('div', class_='card-title').text.strip()
+    product_url = 'https://www.nike.com' + product['href']
+
+    # 데이터베이스에 데이터 저장
+    insert_query = "INSERT INTO nike_products (product_name, product_image, product_idx, product_price, product_date) VALUES (?, ?, ?, ?, ?)"
+    cursor.execute(insert_query, (product_name, product_url))
+
+# 변경 사항 커밋 및 연결 닫기
+db_connection.commit()
+db_connection.close()
+
+print("데이터가 성공적으로 저장되었습니다.")
